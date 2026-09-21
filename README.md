@@ -23,16 +23,35 @@
 
 Requires **Node.js 18+**.
 
-```bash
-# Clone the repository
+### Windows (PowerShell / Command Prompt)
+
+```powershell
+# Clone and run the PowerShell installer
 git clone https://github.com/kjsik11/antigravity-usage-bar.git
 cd antigravity-usage-bar
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+*(Or double-click `install.cmd`)*
 
-# Link globally for terminal access
+### macOS & Linux (Bash / Zsh)
+
+```bash
+# Clone and run the POSIX shell installer
+git clone https://github.com/kjsik11/antigravity-usage-bar.git
+cd antigravity-usage-bar
+chmod +x install.sh && ./install.sh
+```
+
+### Alternative: Direct CLI / NPM Link
+
+```bash
+# From within the cloned directory:
+node ./cli.mjs install
+# or:
 npm link
 ```
 
-Now you can use `agy-usage` (or `antigravity-usage`) anywhere in your terminal.
+Now `agy-usage` (and `antigravity-usage`) will be accessible directly in any terminal.
 
 ---
 
@@ -41,17 +60,14 @@ Now you can use `agy-usage` (or `antigravity-usage`) anywhere in your terminal.
 ### 1. Add / Authenticate Accounts
 
 ```bash
+# Track active account currently logged in Antigravity CLI
+agy-usage add --label personal
+
+# Add a second account (log in via agy, then track it)
+agy-usage add --label work
+
 # Add a Google AI Studio API Key (tested & validated live)
 agy-usage add-key AIzaSy... --label personal-key
-
-# Sign in to an additional Google / Antigravity account via browser OAuth PKCE
-agy-usage login --label work
-
-# Track active account currently used in Antigravity CLI (~/.gemini)
-agy-usage add
-
-# Track a specific email from your environment
-agy-usage add developer@gmail.com --label personal
 ```
 
 ### 2. View Limits & Headroom
@@ -67,17 +83,14 @@ agy-usage watch
 agy-usage --json
 ```
 
-### 3. Switch Active Accounts & Configure Tiers
+### 3. Switch Active Accounts
 
 ```bash
-# Set subscription tier for an account (pro, free, workspace, payg)
-agy-usage tier my-google-account pro
-
 # Switch Antigravity CLI to your 'work' account
 agy-usage switch work
 
-# Or switch by email
-agy-usage switch personal@gmail.com
+# Switch back to 'personal'
+agy-usage switch personal
 
 # Verify which account is currently active in agy
 agy-usage whoami
@@ -88,6 +101,9 @@ agy-usage whoami
 ```bash
 # List all tracked accounts and token validity
 agy-usage list
+
+# Set subscription tier for an account (pro, free, workspace, payg)
+agy-usage tier work pro
 
 # Remove an account and its credentials
 agy-usage remove work
@@ -100,9 +116,12 @@ agy-usage remove work
 ```
 antigravity-usage-bar/
 ├── cli.mjs          # Terminal UI, progress bar rendering & argument parser
+├── install.ps1      # Windows PowerShell automated installer
+├── install.sh       # macOS / Linux POSIX shell installer
+├── install.cmd      # Windows batch installer wrapper
 ├── src/
 │   ├── core.mjs     # Account collection, health checks & orchestration
-│   ├── auth.mjs     # OAuth 2.0 PKCE loopback server & token refresh
+│   ├── auth.mjs     # Native OS credential store (Windows Credential Manager / Keychain)
 │   ├── quota.mjs    # agy telemetry ingestion, quota windows & cache lock
 │   └── storage.mjs  # Atomic file store, inter-process lock & secret redaction
 └── test/

@@ -391,6 +391,50 @@ async function cmdWhoami() {
   console.log(`active in agy: ${bold(activeEmail)}`);
 }
 
+async function cmdInstall() {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const { execSync } = await import('node:child_process');
+
+  const installDir = path.join(os.homedir(), '.antigravity-usage');
+  const binDir = path.join(installDir, 'bin');
+  const appDir = path.join(installDir, 'app');
+
+  fs.mkdirSync(binDir, { recursive: true });
+  fs.mkdirSync(appDir, { recursive: true });
+
+  const rootDir = process.cwd();
+  console.log(dim(`installing application files to ${appDir}...`));
+  fs.copyFileSync(path.join(rootDir, 'cli.mjs'), path.join(appDir, 'cli.mjs'));
+  fs.copyFileSync(path.join(rootDir, 'package.json'), path.join(appDir, 'package.json'));
+  fs.cpSync(path.join(rootDir, 'src'), path.join(appDir, 'src'), { recursive: true, force: true });
+
+  if (process.platform === 'win32') {
+    const cmdContent = `@echo off\r\nnode "%~dp0..\\app\\cli.mjs" %*\r\n`;
+    fs.writeFileSync(path.join(binDir, 'agy-usage.cmd'), cmdContent, 'utf8');
+    fs.writeFileSync(path.join(binDir, 'antigravity-usage.cmd'), cmdContent, 'utf8');
+    try {
+      execSync(`powershell -Command "[Environment]::SetEnvironmentVariable('PATH', [Environment]::GetEnvironmentVariable('PATH', 'User') + ';${binDir}', 'User')"`, { stdio: 'ignore' });
+    } catch {}
+  } else {
+    const shContent = `#!/usr/bin/env bash\nDIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/../app" >/dev/null 2>&1 && pwd)"\nexec node "$DIR/cli.mjs" "$@"\n`;
+    const agyBin = path.join(binDir, 'agy-usage');
+    fs.writeFileSync(agyBin, shContent, { mode: 0o755 });
+    try {
+      fs.symlinkSync(agyBin, path.join(binDir, 'antigravity-usage'));
+    } catch {}
+    if (fs.existsSync('/usr/local/bin')) {
+      try {
+        fs.symlinkSync(agyBin, '/usr/local/bin/agy-usage');
+      } catch {}
+    }
+  }
+
+  console.log(`${green('✔')} ${bold('agy-usage')} installed successfully to ${binDir}`);
+  console.log(dim(`restart your terminal or run \`agy-usage status\` to test.`));
+}
+
 function cmdHelp() {
   console.log(`${bold('agy-usage')} — Multi-account usage & rate limits for Google Antigravity CLI (agy)
 
@@ -405,6 +449,7 @@ ${bold('usage')}
   agy-usage list                                  list tracked accounts and token validity
   agy-usage remove <email|label>                  remove account from tracking
   agy-usage whoami                                print active account configured in agy
+  agy-usage install                               install command globally to PATH
   agy-usage --version | -h                        display version / help`);
 }
 
@@ -424,6 +469,7 @@ const commands = {
   switch: cmdSwitch,
   use: cmdSwitch,
   whoami: cmdWhoami,
+  install: cmdInstall,
   help: cmdHelp,
 };
 
