@@ -34,11 +34,6 @@ try {
 }
 
 # 2. Determine installation source and target directory
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not $scriptDir -or -not (Test-Path "$scriptDir\cli.mjs")) {
-    $scriptDir = (Get-Location).Path
-}
-
 $installDir = Join-Path $env:USERPROFILE ".antigravity-usage"
 $binDir = Join-Path $installDir "bin"
 $appDir = Join-Path $installDir "app"
@@ -46,11 +41,35 @@ $appDir = Join-Path $installDir "app"
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 New-Item -ItemType Directory -Force -Path $appDir | Out-Null
 
-# 3. Copy files to app directory
-Write-Info "Installing application files to $appDir..."
-Copy-Item -Path "$scriptDir\cli.mjs" -Destination "$appDir\cli.mjs" -Force
-Copy-Item -Path "$scriptDir\package.json" -Destination "$appDir\package.json" -Force
-Copy-Item -Path "$scriptDir\src" -Destination "$appDir" -Recurse -Force
+$scriptDir = $null
+if ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Path) {
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+
+# 3. Copy or download application files
+if ($scriptDir -and (Test-Path (Join-Path $scriptDir "cli.mjs"))) {
+    Write-Info "Installing application files from local repository to $appDir..."
+    Copy-Item -Path "$scriptDir\cli.mjs" -Destination "$appDir\cli.mjs" -Force
+    Copy-Item -Path "$scriptDir\package.json" -Destination "$appDir\package.json" -Force
+    Copy-Item -Path "$scriptDir\src" -Destination "$appDir" -Recurse -Force
+} else {
+    Write-Info "Downloading application files from GitHub to $appDir..."
+    $tempZip = Join-Path $env:TEMP "antigravity-usage-bar-main.zip"
+    $tempExtract = Join-Path $env:TEMP "antigravity-usage-bar-extract"
+    if (Test-Path $tempExtract) { Remove-Item -Path $tempExtract -Recurse -Force }
+    
+    $downloadUrl = "https://github.com/Abhishekkkk-15/antigravity-usage-bar/archive/refs/heads/main.zip"
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -UseBasicParsing
+    Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+    
+    $extractedRoot = Join-Path $tempExtract "antigravity-usage-bar-main"
+    Copy-Item -Path "$extractedRoot\cli.mjs" -Destination "$appDir\cli.mjs" -Force
+    Copy-Item -Path "$extractedRoot\package.json" -Destination "$appDir\package.json" -Force
+    Copy-Item -Path "$extractedRoot\src" -Destination "$appDir" -Recurse -Force
+    
+    Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 # 4. Create Windows CMD and PowerShell wrappers in bin directory
 $cmdWrapperContent = "@echo off`r`nnode `"%~dp0..\app\cli.mjs`" %*"
